@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+
+    <title>TTM8 RAM Writer</title>
+  </head>
+  <body>
+    <div class="container">
+      <!-- Modal -->
+      <div class="modal fade" id="runningModal" tabindex="-1" data-bs-backdrop="static" >
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">TTM8 RAM Writer</h5>
+            </div>
+            <div class="modal-body text-center">
+              <div class="spinner-border text-primary" role="status"></div>
+              書込み中...
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="modal fade" id="healthcheckModal">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">TTM8 RAM Writer</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+              <div class="spinner-border text-primary" role="status"></div>
+              サーバに接続できません。もう一度やり直してください。
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+      <h1 class="text-center display-1">TTM8 RAM Writer</h1>
+      <div claSs="text-center">IP:<span id="ipaddr"></span></div>
+
+      <div class="row">
+        
+        <div class="col-md-6 bg-light">
+          <div class="row">
+            <div class="mb-3">
+              <h3>コード書き込み</h3>
+              <div>CSV形式(アドレス,データ)で入力してください。末尾は空行にしてください。書込み完了後にリセットがかかります。</div>
+              <br />
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="cleansing">
+                <label class="form-check-label" for="flexSwitchCheckDefault">未使用アドレスをクリアする</label>
+              </div>
+              <textarea class="form-control" id="runcode" name="runcode" rows="20" placeholder="例：&#13;&#10;00,00&#13;&#10;01,FF&#13;&#10;02,01"></textarea>
+              <a href="javascript:sendCode()" class="btn btn-primary" >書き込み</a>
+              <a href="javascript:clearCode()" class="btn btn-danger" >クリア</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-6 bg-light">
+          <div class="row">
+            <div class="mb-6">
+              <h3>マニュアル操作(デバッグ用)</h3>
+
+              <div class="accordion">
+                <div class="accordion-item">
+                  <h2 class="accordion-header" id="panelsStayOpen-headingAddr">
+                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#panelsStayOpen-collapseAddr" aria-expanded="true" aria-controls="panelsStayOpen-collapseAddr">
+                      シフトレジスタ操作
+                    </button>
+                  </h2>
+                  <div id="panelsStayOpen-collapseAddr" class="accordion-collapse collapse show" aria-labelledby="panelsStayOpen-headingAddr">
+                    <div class="accordion-body">
+                      <table id="view-table">
+                        <tr>
+                          <td><strong>手動:　</strong></td>
+                          <td>
+                            <a class="btn btn-primary" href="javascript:sendData(0)">シフト0</a>
+                            <a class="btn btn-primary" href="javascript:sendData(1)">シフト1</a>
+                            <a class="btn btn-primary" href="javascript:sendDataValue(0)">クリア</a>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td><strong>HEX数値(16bit):　</strong></td>
+                          <td>
+                            <div class="input-group mb-3">
+                              <input type="text" id="valueData" class="form-control" placeholder="「{アドレス}{データ}」形式" aria-describedby="valDataBtn">
+                              <div class="input-group-append">
+                                <button class="btn btn-primary" type="button" id="valDataBtn" onclick="sendDataValue()">入力</button>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td><strong>制御信号:　</strong></td>
+                          <td>
+                            <a class="btn btn-primary" href="javascript:sendRclk()">ラッチ(RCLK)</a>
+                          </td>
+                        </tr>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+
+              <div class="accordion">
+                <div class="accordion-item">
+                  <h2 class="accordion-header" id="panelsStayOpen-headingRam">
+                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#panelsStayOpen-collapseRam" aria-expanded="true" aria-controls="panelsStayOpen-collapseRam">
+                      TTM8操作
+                    </button>
+                  </h2>
+                  <div id="panelsStayOpen-collapseRam" class="accordion-collapse collapse show" aria-labelledby="panelsStayOpen-headingRam">
+                    <div class="accordion-body">
+                      <table id="view-table">
+                        <tr>
+                          <td><strong>制御信号:　</strong></td>
+                          <td>
+                            <a class="btn btn-primary" href="javascript:sendRamwe()">RAMWE</a>
+                            <a class="btn btn-primary" href="javascript:sendReset()">TTM8 リセット</a>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td><strong>全クリア:　</strong></td>
+                          <td>
+                            <a class="btn btn-primary" href="javascript:sendRamClear(0)">実行</a>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td><strong>範囲クリア:　</strong></td>
+                          <td>
+                            <div class="input-group mb-3">
+                              <span class="input-group-text">始</span>
+                              <input type="text" id="addFrom" class="form-control" placeholder="最小:00">
+                              <span class="input-group-text">終</span>
+                              <input type="text" id="addTo" class="form-control" placeholder="最大:BF">
+                              <button class="btn btn-primary" type="button" id="ramClearRange" onclick="sendRamClearRange()">実行</button>
+                            </div>
+                          </td>
+                        </tr>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="accordion-item">
+                  <h2 class="accordion-header" id="panelsStayOpen-headingDebug">
+                    <button class="accordion-button collapsed " type="button" data-bs-toggle="collapse" data-bs-target="#panelsStayOpen-collapseDebug" aria-expanded="false" aria-controls="panelsStayOpen-collapseDebug">
+                      手動GPIO
+                    </button>
+                  </h2>
+                  <div id="panelsStayOpen-collapseDebug" class="accordion-collapse collapse" aria-labelledby="panelsStayOpen-headingDebug">
+                    <div class="accordion-body bg-warning">
+                      <table id="view-table">
+                        <tr>
+                          <td>
+                            <div class="form-check form-switch">
+                              <input class="form-check-input" type="checkbox" id="statusGpio">
+                              <label class="form-check-label" for="flexSwitchCheckDefault">GPIOステータス表示</label>
+                            </div>
+                          </td>
+                        </tr>
+                        <tr>
+                            <td><strong>G22 (TTM8 CLK):　</strong></td>
+                            <td>
+                              <a class="btn btn-primary" href="javascript:sendGpio(22, true)" role="button">ON</a>
+                              <a class="btn btn-danger" href="javascript:sendGpio(22, false)" role="button">OFF</a>
+                              <a class="btn btn-primary" href="javascript:sendGpio(22, 'click')" role="button">Click</a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>G19 (SER (シリアルデータ入力)):　</strong></td>
+                            <td>
+                              <a class="btn btn-primary" href="javascript:sendGpio(19, true)" role="button">ON</a>
+                              <a class="btn btn-danger" href="javascript:sendGpio(19, false)" role="button">OFF</a>
+                              <a class="btn btn-primary" href="javascript:sendGpio(19, 'click')" role="button">Click</a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>G23 (SRCLK (クロック、シフト)):　</strong></td>
+                            <td>
+                              <a class="btn btn-primary" href="javascript:sendGpio(23, true)" role="button">ON</a>
+                              <a class="btn btn-danger" href="javascript:sendGpio(23, false)" role="button">OFF</a>
+                              <a class="btn btn-primary" href="javascript:sendGpio(23, 'click')" role="button">Click</a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>G33 (RCLK (ラッチ)):　</strong></td>
+                            <td>
+                              <a class="btn btn-primary" href="javascript:sendGpio(33, true)" role="button">ON</a>
+                              <a class="btn btn-danger" href="javascript:sendGpio(33, false)" role="button">OFF</a>
+                              <a class="btn btn-primary" href="javascript:sendGpio(33, 'click')" role="button">Click</a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>G21 (RAM_WE (RAM書込み)):　</strong></td>
+                            <td>
+                              <a class="btn btn-primary" href="javascript:sendGpio(21, true)" role="button">ON</a>
+                              <a class="btn btn-danger" href="javascript:sendGpio(21, false)" role="button">OFF</a>
+                              <a class="btn btn-primary" href="javascript:sendGpio(21, 'click')" role="button">Click</a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>G25 (EXRST (リセット)):　</strong></td>
+                            <td>
+                              <a class="btn btn-primary" href="javascript:sendGpio(25, true)" role="button">ON</a>
+                              <a class="btn btn-danger" href="javascript:sendGpio(25, false)" role="button">OFF</a>
+                              <a class="btn btn-primary" href="javascript:sendGpio(25, 'click')" role="button">Click</a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>全GPIO:　</strong></td>
+                            <td>
+                              <a class="btn btn-primary" href="javascript:sendGpio(0, true)" role="button">ON</a>
+                              <a class="btn btn-danger" href="javascript:sendGpio(0, false)" role="button">OFF</a>
+                              <a class="btn btn-primary" href="javascript:sendGpio(0, 'click')" role="button">Click</a>
+                            </td>
+                        </tr>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+    <script src="/ttm8.js" type="text/javascript"></script>
+
+  </body>
+</html>
