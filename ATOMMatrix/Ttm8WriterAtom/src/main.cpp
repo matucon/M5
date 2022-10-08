@@ -61,6 +61,8 @@ void setupWifi() {
   if(MDNS.begin("ttm8")){
     Serial.println("aMDNS responder started: http://ttm8.local");
   }
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
   drawProgress(0x408f00);
 }
 
